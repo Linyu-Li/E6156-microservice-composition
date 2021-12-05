@@ -25,8 +25,7 @@ SCHEDULE_PROPS = {
 }
 
 
-
-def project_req_data(req_data: dict, props: tuple) -> dict:
+def project_req_data(req_data: dict, props: Union[tuple, str]) -> dict:
     res = dict()
     if type(props) is tuple:
         for prop in props:
@@ -38,15 +37,16 @@ def project_req_data(req_data: dict, props: tuple) -> dict:
         res['Id'] = req_data['Id']
         return res
 
+
 def sync_request_microservices(req_data: dict,
-                                headers: Dict) -> (int, str):
+                               headers: Dict) -> (int, str):
     # register users
     register_data = project_req_data(req_data, USR_ADDR_PROPS['fields'])
     if register_data is None:
         return 400, f"Missing data field(s) for {USR_ADDR_PROPS['microservice']}"
     user_res = requests.post(USR_ADDR_PROPS['api'],
-                        data=json.dumps(register_data),
-                        headers=headers)
+                             data=json.dumps(register_data),
+                             headers=headers)
 
     if user_res.status_code != 201:
         return 400, "/user goes wrong, please check"
@@ -61,8 +61,8 @@ def sync_request_microservices(req_data: dict,
         return 400, f"Missing data field(s) for {prop['microservice']}"
     data['id'] = uid
     pref_res = requests.post(prop['api'],
-                  data=json.dumps(data),
-                  headers=headers)
+                             data=json.dumps(data),
+                             headers=headers)
 
     if pref_res.status_code != 201:
         return 400, "/profile goes wrong, please check"
@@ -70,8 +70,8 @@ def sync_request_microservices(req_data: dict,
     prop = SCHEDULE_PROPS
     data = project_req_data(req_data, prop['fields'])
     schedule_res = requests.post(prop['api'] + f"/{uid}",
-                  data=json.dumps(data),
-                  headers=headers)
+                                 data=json.dumps(data),
+                                 headers=headers)
 
     if schedule_res.status_code != 201:
         return 400, "/availability goes wrong, please check"

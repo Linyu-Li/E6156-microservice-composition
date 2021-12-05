@@ -8,21 +8,23 @@ app = Flask(__name__)
 CORS(app)
 sess = FuturesSession()
 
-# TODO change apis below to AWS ones in deployment
+
 USR_ADDR_PROPS = {
     'microservice': 'User/address microservice',
-    'api': 'http://localhost:5001/users',
+    'api': 'http://ec2-18-117-241-244.us-east-2.compute.amazonaws.com:5000/api/users',
     'fields': ('nameLast', 'nameFirst', 'email', 'addressID', 'password', 'gender')
 }
 USR_PREF_PROPS = {
     'microservice': 'User profile microservice',
-    'api': 'http://localhost:5002/profile',
+    'api': 'http://ec2-3-145-83-228.us-east-2.compute.amazonaws.com:5000/api/profile',
     'fields': ('movie', 'hobby', 'book', 'music', 'sport', 'major', 'orientation')
 }
 SCHEDULE_PROPS = {
     'microservice': 'Scheduler microservice',
-    'api': 'http://localhost:5003/availability/users',
-    'fields': ('Year', 'Month', 'Day', 'StartTime', 'EndTime')
+    # Using the local backend and remote DB for now. Code of this microservice still needs refinement
+    # before next deployment to Elastic Beanstalk.
+    'api': 'http://127.0.0.1:5003/api/availability/users',
+    'fields': ('Id', 'Year', 'Month', 'Day', 'StartTime', 'EndTime')
 }
 PROPS = (USR_ADDR_PROPS, USR_PREF_PROPS, SCHEDULE_PROPS)
 
@@ -49,16 +51,15 @@ def async_request_microservices(req_data: dict,
                      data=json.dumps(data),
                      headers=headers))
 
-    prop = SCHEDULE_PROPS
-    for time_slot in req_data['timeSlots']:
-        tid = time_slot['Id']
-        t_data = project_req_data(time_slot, prop['fields'])
-        if t_data is None:
-            return 400, f"Missing field(s) in one of the request data for {prop['microservice']}"
-        futures.append(
-            sess.put(props['api'] + f"/{user_id}/{tid}",
-                     data=json.dumps(t_data),
-                     headers=headers))
+    # Handle the scheduler microservice which has a different URL pattern
+    props = SCHEDULE_PROPS
+    data = project_req_data(req_data, props['fields'])
+    if data is None:
+        return 400, f"Missing data field(s) for {props['microservice']}"
+    futures.append(
+        sess.put(props['api'] + f"/{user_id}/{data['Id']}",
+                 data=json.dumps(data),
+                 headers=headers))
 
     for i, future in enumerate(futures):
         microservice = PROPS[min(i, 2)]['microservice']
@@ -95,25 +96,12 @@ def update_info(user_id):
             "sport": string,
             "major": string,
             "orientation": string,
-            "timeSlots": [
-                {
-                    "Id": string/int,
-                    "Year": string,
-                    "Month": string,
-                    "Day": string,
-                    "StartTime": string,
-                    "EndTime": string
-                },
-                {
-                    "Id": string/int,
-                    "Year": string,
-                    "Month": string,
-                    "Day": string,
-                    "StartTime": string,
-                    "EndTime": string
-                },
-                ...
-            ]
+            "Id": string/int,
+            "Year": string,
+            "Month": string,
+            "Day": string,
+            "StartTime": string,
+            "EndTime": string
         }
     """
 
