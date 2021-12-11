@@ -15,7 +15,7 @@ USR_ADDR_PROPS = {
     'microservice': 'User/address microservice',
     # 'api': 'http://ec2-18-117-241-244.us-east-2.compute.amazonaws.com:5000/api/users',
     'api': 'http://127.0.0.1:5001/api/users',
-    'fields': ('nameLast', 'nameFirst', 'email', 'addressID', 'password', 'gender')
+    'fields': ('nameLast', 'nameFirst', 'email', 'address', 'postcode', 'password', 'gender')
 }
 USR_PREF_PROPS = {
     'microservice': 'User profile microservice',
