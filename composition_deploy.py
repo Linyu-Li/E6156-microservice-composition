@@ -15,12 +15,14 @@ USR_ADDR_PROPS = {
     'microservice': 'User/address microservice',
     # 'api': 'http://ec2-18-117-241-244.us-east-2.compute.amazonaws.com:5000/api/users',
     'api': 'http://127.0.0.1:5001/api/users',
+    'required': {'email', 'postcode', 'password'},
     'fields': ('nameLast', 'nameFirst', 'email', 'address', 'postcode', 'password', 'gender')
 }
 USR_PREF_PROPS = {
     'microservice': 'User profile microservice',
     # 'api': 'http://ec2-3-145-83-228.us-east-2.compute.amazonaws.com:5000/api/profile',
     'api': 'http://127.0.0.1:5002/api/profile',
+    'required': set(),
     'fields': ('movie', 'hobby', 'book', 'music', 'sport', 'major', 'orientation')
 }
 PROPS = (USR_ADDR_PROPS, USR_PREF_PROPS)
@@ -44,12 +46,15 @@ Request JSON format:
 }
 """
 
-def project_req_data(req_data: dict, props: tuple) -> dict:
+
+def project_req_data(req_data: dict, props: tuple, required_props: set) -> dict:
     res = dict()
     for prop in props:
-        if prop not in req_data:
-            return None
-        res[prop] = req_data[prop]
+        if prop in req_data:
+            res[prop] = req_data[prop]
+        else:
+            if len(required_props) and prop in required_props:
+                return None
     return res
 
 
@@ -58,7 +63,7 @@ def async_request_microservices(req_data: dict,
                                 headers: Dict) -> (int, str):
     futures = []
     for props in (USR_ADDR_PROPS, USR_PREF_PROPS):
-        data = project_req_data(req_data, props['fields'])
+        data = project_req_data(req_data, props['fields'], set())   # params in PUT requests are optional
         if data is None:
             return 400, f"Missing data field(s) for {props['microservice']}"
         futures.append(
@@ -80,7 +85,7 @@ def async_request_microservices(req_data: dict,
 def sync_request_microservices(req_data: dict,
                                headers: Dict) -> (int, str):
     # register users
-    register_data = project_req_data(req_data, USR_ADDR_PROPS['fields'])
+    register_data = project_req_data(req_data, USR_ADDR_PROPS['fields'], USR_ADDR_PROPS['required'])
     if register_data is None:
         return 400, f"Missing data field(s) for {USR_ADDR_PROPS['microservice']}"
     user_res = requests.post(USR_ADDR_PROPS['api'],
@@ -94,12 +99,11 @@ def sync_request_microservices(req_data: dict,
     uid = res_str.split()[4]
 
     # create preference
-    prop = USR_PREF_PROPS
-    data = project_req_data(req_data, prop['fields'])
+    data = project_req_data(req_data, USR_PREF_PROPS['fields'], USR_PREF_PROPS['required'])
     if data is None:
-        return 400, f"Missing data field(s) for {prop['microservice']}"
+        return 400, f"Missing data field(s) for {USR_PREF_PROPS['microservice']}"
     data['id'] = uid
-    pref_res = requests.post(prop['api'],
+    pref_res = requests.post(USR_PREF_PROPS['api'],
                              data=json.dumps(data),
                              headers=headers)
 
